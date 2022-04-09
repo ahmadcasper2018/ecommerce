@@ -24,6 +24,16 @@ ADDRESS_CHOICES = (
 )
 
 
+class Visitor(models.Model):
+    date_created = models.DateTimeField('created', auto_now_add=True)
+    ip_address = models.GenericIPAddressField(verbose_name="ip_address",
+                                              null=True)
+
+    class Meta:
+        verbose_name = 'Visitor'
+        verbose_name_plural = 'Visitors'
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

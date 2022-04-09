@@ -11,11 +11,20 @@ from django.shortcuts import redirect
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, View
-
+from django.shortcuts import get_object_or_404
 from .forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
 from .models import Item, OrderItem, Order, Address, Payment, Coupon, Refund, UserProfile
-
+from .models import Visitor
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def get_visitor_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
 def create_ref_code():
@@ -350,13 +359,23 @@ class HomeView(ListView):
     paginate_by = 10
     template_name = "home.html"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        visitor_ip = get_visitor_ip(self.request)
+        exists = Visitor.objects.filter(ip_address=visitor_ip)
+        if visitor_ip and not exists:
+            Visitor.objects.create(ip_address=visitor_ip)
+        context['visitors_count']: len(Visitor.objects.all())
+        context['now'] = timezone.now()
+        return context
+
 
 class OrderSummaryView(LoginRequiredMixin, View):
     def get(self, *args, **kwargs):
         try:
             order = Order.objects.get(user=self.request.user, ordered=False)
             context = {
-                'object': order
+                'object': order,
             }
             return render(self.request, 'order_summary.html', context)
         except ObjectDoesNotExist:
